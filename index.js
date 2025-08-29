@@ -1,70 +1,109 @@
+// index.js
+
+// Import required modules
 const express = require('express');
+const bodyParser = require('body-parser');
+
+// Create an Express application
 const app = express();
+
+// Use body-parser middleware to parse JSON request bodies
+app.use(bodyParser.json());
+
+// Define the port the server will run on.
+// Use the PORT environment variable if it's set (for hosting providers), otherwise default to 3000
 const PORT = process.env.PORT || 3000;
 
-// Middleware to parse JSON
-app.use(express.json());
-
-// POST endpoint for /bfhl
+/**
+ * POST /bfhl
+ * This route processes an array of data and returns a structured JSON response.
+ */
 app.post('/bfhl', (req, res) => {
     try {
-        const { data } = req.body;
+        // Extract the 'data' array from the request body
+        const data = req.body.data;
 
-        if (!Array.isArray(data)) {
-            return res.status(400).json({ is_success: false, error: 'Invalid input format. Data should be an array.' });
+        // Check if data is provided and is an array
+        if (!data || !Array.isArray(data)) {
+            return res.status(400).json({
+                is_success: false,
+                message: "Invalid input: 'data' must be an array."
+            });
         }
 
-        // Initialize response fields
-        const evenNumbers = [];
-        const oddNumbers = [];
-        const alphabets = [];
-        const specialCharacters = [];
-        let sum = 0;
-        let concatString = '';
+        // --- Data Processing Logic ---
 
-        // Process the input data
+        const odd_numbers = [];
+        const even_numbers = [];
+        const alphabets = [];
+        const special_characters = [];
+        let sum = 0;
+        let alphabet_chars = '';
+
         data.forEach(item => {
-            if (/^\d+$/.test(item)) { // Check if it's a number
+            // Check if the item is a number (represented as a string)
+            if (!isNaN(item) && item.trim() !== '' && !/[a-zA-Z]/.test(item)) {
                 const number = parseInt(item, 10);
                 if (number % 2 === 0) {
-                    evenNumbers.push(item);
+                    even_numbers.push(String(number));
                 } else {
-                    oddNumbers.push(item);
+                    odd_numbers.push(String(number));
                 }
                 sum += number;
-            } else if (/^[a-zA-Z]+$/.test(item)) { // Check if it's an alphabet
+            }
+            // *** FIX: Use a regex that allows for one or more letters ***
+            // Check if the item is a string containing only alphabets
+            else if (typeof item === 'string' && /^[a-zA-Z]+$/.test(item)) {
                 alphabets.push(item.toUpperCase());
-                concatString = item + concatString; // Reverse order
-            } else { // Special characters
-                specialCharacters.push(item);
+                alphabet_chars += item;
+            }
+            // Otherwise, consider it a special character
+            else {
+                special_characters.push(item);
             }
         });
 
-        // Generate alternating caps for concatenated string
-        let alternatingCaps = '';
-        let upper = true;
-        for (const char of concatString) {
-            alternatingCaps += upper ? char.toUpperCase() : char.toLowerCase();
-            upper = !upper;
+        // --- Concatenation and Alternating Caps Logic ---
+
+        const reversed_alphabets = alphabet_chars.split('').reverse().join('');
+        let concat_string = '';
+        for (let i = 0; i < reversed_alphabets.length; i++) {
+            if (i % 2 === 0) {
+                concat_string += reversed_alphabets[i].toUpperCase();
+            } else {
+                concat_string += reversed_alphabets[i].toLowerCase();
+            }
         }
 
-        // Prepare the response
+        // --- Construct the Response ---
+
         const response = {
             is_success: true,
-            user_id: 'john_doe_17091999', // Example user_id
-            email: 'john@xyz.com',
-            roll_number: 'ABCD123',
-            odd_numbers: oddNumbers,
-            even_numbers: evenNumbers,
-            alphabets: alphabets,
-            special_characters: specialCharacters,
-            sum: sum.toString(),
-            concat_string: alternatingCaps
+            user_id: "john_doe_17091999",
+            email: "john@xyz.com",
+            roll_number: "ABCD123",
+            odd_numbers,
+            even_numbers,
+            alphabets,
+            special_characters,
+            sum: String(sum),
+            concat_string
         };
 
         res.status(200).json(response);
+
     } catch (error) {
-        res.status(500).json({ is_success: false, error: 'Server error.' });
+        // *** IMPROVEMENT: Better error logging and response ***
+        // Log the full error to the console (this will appear in Render's logs)
+        console.error("Error processing request:", error);
+
+        // Send a more detailed error response back to the client
+        res.status(500).json({
+            is_success: false,
+            user_id: "john_doe_17091999",
+            message: "An internal server error occurred.",
+            error_details: error.message // Include the actual error message for easier debugging
+        });
     }
 });
 
